@@ -42,11 +42,6 @@ jobs:
       - name: Clone
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Find tests
-        run: |
-          echo "Finding tests"
-          grep -rn "def test" > /dev/null
-
       - name: Setup Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
@@ -107,7 +102,12 @@ jobs:
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
+          set -o pipefail
           bench --site test_site set-config allow_tests true
-          bench --site test_site run-tests --app erpnext_mexico_compliance
+          bench --site test_site run-tests --app erpnext_mexico_compliance 2>&1 | tee "$RUNNER_TEMP/frappe-tests.log"
+          if ! grep -Eq 'Running [1-9][0-9]* [[:alnum:]_-]+ tests for erpnext_mexico_compliance' "$RUNNER_TEMP/frappe-tests.log"; then
+            echo "::error::Frappe did not run any erpnext_mexico_compliance tests"
+            exit 1
+          fi
         env:
           TYPE: server
