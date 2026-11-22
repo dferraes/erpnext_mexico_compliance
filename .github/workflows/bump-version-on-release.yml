@@ -20,17 +20,22 @@ jobs:
   bump-version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: version-16
           fetch-depth: 0
 
       - name: Extract version from tag
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
-          TAG="${{ github.event.release.tag_name || inputs.tag }}"
-          VERSION="${TAG#v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          version="${RELEASE_TAG#v}"
+          if [[ ! "$version" =~ ^[0-9][0-9A-Za-z._+!-]*$ ]]; then
+            echo "::error::El tag no contiene una versión de paquete válida"
+            exit 1
+          fi
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
 
       - name: Merge main into version-16
         run: |
@@ -43,16 +48,20 @@ jobs:
           }
 
       - name: Update __init__.py
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          sed -i 's/^__version__ = ".*"$/__version__ = "${{ steps.version.outputs.version }}"/' \
+          sed -i "s/^__version__ = \".*\"$/__version__ = \"$PACKAGE_VERSION\"/" \
             erpnext_mexico_compliance/__init__.py
 
       - name: Commit and push
+        env:
+          PACKAGE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           git add erpnext_mexico_compliance/__init__.py
           if git diff --staged --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
+          git commit -m "chore: bump version to $PACKAGE_VERSION"
           git push
