@@ -2,10 +2,10 @@
 # See license.txt
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 
 
-class TestCancellationReason(FrappeTestCase):
+class TestCancellationReason(IntegrationTestCase):
 	def test_cancellation_reasons_require_a_relationship_only_for_code_01(self):
 		reasons = frappe.get_all(
 			"Cancellation Reason",
